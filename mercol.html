@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Mercol Sugar SAS — Órdenes de Entrega</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap');
+
+:root {
+  --navy:  #1a3a5c;
+  --blue:  #2563eb;
+  --border:#cbd5e1;
+  --dark:  #0f172a;
+  --muted: #64748b;
+  --red:   #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'IBM Plex Sans', sans-serif; background: #e8edf2; min-height: 100vh; }
+
+/* ══ LOGIN SCREEN ══ */
+#login-screen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; gap: 20px;
+  background: var(--navy);
+}
+.login-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(126,179,232,0.25);
+  border-radius: 14px; padding: 40px 36px;
+  text-align: center; max-width: 360px; width: 90%;
+}
+.login-logo { font-size: 32px; font-weight: 700; color: #fff; letter-spacing: 0.06em; }
+.login-sub  { font-size: 11px; color: #7eb3e8; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px; }
+.login-desc { font-size: 13px; color: rgba(255,255,255,0.55); margin: 20px 0 28px; line-height: 1.6; }
+.btn-ms {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px;
+  background: #fff; color: #1a3a5c;
+  border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 700;
+  font-family: 'IBM Plex Sans', sans-serif;
+  cursor: pointer; transition: background 0.18s;
+  letter-spacing: 0.02em;
+}
+.btn-ms:hover { background: #e8f0fe; }
+.btn-ms svg  { flex-shrink: 0; }
+.login-user {
+  display: none; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(126,179,232,0.2);
+  border-radius: 8px; padding: 10px 14px;
+  margin-top: 12px;
+}
+.login-user.show { display: flex; }
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #2563eb;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.user-name  { font-size: 12px; color: #fff; font-weight: 600; }
+.user-email { font-size: 10px; color: #7eb3e8; }
+
+/* ══ APP LAYOUT ══ */
+#app { display: none; min-height: 100vh; }
+#app.show { display: flex; flex-direction: column; }
+
+.app-inner { display: flex; flex: 1; }
+
+/* ══ TOP BAR ══ */
+.topbar {
+  background: #0f2640; padding: 9px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(126,179,232,0.15);
+  flex-shrink: 0;
+}
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.topbar-logo { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.06em; }
+.topbar-badge {
+  font-size: 9px; font-weight: 700; color: #7eb3e8;
+  background: rgba(126,179,232,0.12);
+  border: 1px solid rgba(126,179,232,0.2);
+  border-radius: 20px; padding: 2px 8px; letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.topbar-user { display: flex; align-items: center; gap: 8px; }
+.topbar-username { font-size: 11px; color: rgba(255,255,255,0.6); }
+.btn-logout {
+  padding: 5px 10px; background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px; color: rgba(255,255,255,0.45);
+  font-size: 10px; font-weight: 600; font-family: 'IBM Plex Sans',sans-serif;
+  cursor: pointer; transition: all 0.15s; letter-spacing: 0.05em;
+}
+.btn-logout:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+/* ══ SIDEBAR ══ */
+.sidebar {
+  width: 340px; min-width: 340px;
+  background: var(--navy);
+  display: flex; flex-direction: column;
+  overflow-y: auto; height: calc(100vh - 44px);
+  position: sticky; top: 44px;
+}
+.sidebar-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.consec-row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(126,179,232,0.35);
+  border-radius: 8px; padding: 7px 12px;
+}
+.consec-label { color: #7eb3e8; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; }
+.consec-input {
+  background: transparent; border: none; outline: none;
+  color: #fff; font-size: 17px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  width: 72px; text-align: center;
+}
+.consec-input:focus { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+.btn-hist {
+  margin-top: 8px; width: 100%; padding: 7px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px; color: rgba(255,255,255,0.7);
+  font-size: 11px; font-weight: 600; font-family: 'IBM Plex Sans',sans-serif;
+  cursor: pointer; letter-spacing: 0.05em;
+  transition: all 0.18s; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-hist:hover { background: rgba(255,255,255,0.13); color: #fff; }
+.hist-badge { background: rgba(126,179,232,0.25); border-radius: 20px; padding: 1px 7px; font-size: 10px; }
+
+.form-body { padding: 12px 18px 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+
+.sec-title {
+  font-size: 10px; font-weight: 700; color: #7eb3e8;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin: 14px 0 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sec-title::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.07); }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.field label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.07em; text-transform: uppercase; }
+.field label .req { color: #f87171; }
+.field input, .field select {
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,255,255,0.11);
+  border-radius: 6px; padding: 8px 10px;
+  font-size: 13px; color: #fff;
+  font-family: 'IBM Plex Sans',sans-serif;
+  outline: none; transition: border-color 0.15s, background 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+.field input::placeholder { color: rgba(255,255,255,0.22); }
+.field input:focus, .field select:focus { border-color: #7eb3e8; background: rgba(255,255,255,0.11); }
+.field select option { background: #1a3a5c; color: #fff; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+.btn-gen {
+  margin-top: 16px; padding: 12px;
+  background: #2563eb; color: #fff; border: none;
+  border-radius: 8px; font-size: 13px; font-weight: 700;
+  font-family: 'IBM Plex Sans',sans-serif;
+  letter-spacing: 0.04em; cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+.btn-gen:hover { background: #1d4ed8; }
+.btn-gen:active { transform: scale(0.98); }
+.btn-anular {
+  margin-top: 7px; padding: 10px;
+  background: transparent; color: #f87171;
+  border: 1.5px solid rgba(248,113,113,0.35);
+  border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: 'IBM Plex Sans',sans-serif;
+  cursor: pointer; transition: all 0.18s; letter-spacing: 0.04em;
+}
+.btn-anular:hover { background: rgba(220,38,38,0.1); border-color: #f87171; }
+.btn-clear {
+  margin-top: 6px; padding: 8px;
+  background: transparent; color: rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; font-size: 11px; font-weight: 600;
+  font-family: 'IBM Plex Sans',sans-serif;
+  cursor: pointer; transition: all 0.18s;
+}
+.btn-clear:hover { color: #fff; border-color: rgba(255,255,255,0.28); }
+
+/* ══ PANEL ÓRDENES ══ */
+.panel-ordenes {
+  width: 280px; min-width: 280px;
+  background: #f8fafc;
+  border-left: 1px solid #e2e8f0;
+  display: flex; flex-direction: column;
+  height: calc(100vh - 44px);
+  position: sticky; top: 44px;
+}
+.panel-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 11px; font-weight: 700; color: var(--navy);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-count {
+  background: var(--navy); color: #fff;
+  border-radius: 20px; padding: 2px 8px; font-size: 10px;
+}
+.panel-search {
+  margin-top: 8px; width: 100%; padding: 7px 10px;
+  border: 1.5px solid #e2e8f0; border-radius: 6px;
+  font-size: 12px; font-family: 'IBM Plex Sans',sans-serif;
+  outline: none; color: var(--dark); background: #fff;
+}
+.panel-search:focus { border-color: #7eb3e8; }
+.panel-list { flex: 1; overflow-y: auto; padding: 8px; }
+.orden-item {
+  padding: 10px 12px; border-radius: 8px;
+  border: 1.5px solid #e2e8f0; background: #fff;
+  margin-bottom: 6px; cursor: pointer;
+  transition: all 0.15s;
+}
+.orden-item:hover { border-color: #7eb3e8; background: #eff6ff; }
+.orden-item.anulada { border-color: #fecaca; background: #fff5f5; }
+.orden-item.anulada:hover { border-color: #f87171; }
+.oi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.oi-num { font-size: 13px; font-weight: 700; color: var(--navy); font-family: 'IBM Plex Mono', monospace; }
+.oi-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+  padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase;
+}
+.badge-gen  { background: #dcfce7; color: #166534; }
+.badge-anul { background: #fee2e2; color: #991b1b; }
+.oi-mid { font-size: 11px; color: var(--dark); font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oi-bot { font-size: 10px; color: var(--muted); }
+.panel-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 200px; color: var(--muted); font-size: 12px; text-align: center;
+  padding: 20px; gap: 8px;
+}
+.panel-sync {
+  padding: 6px 10px; font-size: 10px; color: var(--muted);
+  text-align: center; border-top: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+/* ══ MAIN PREVIEW ══ */
+.main {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; padding: 28px 20px; overflow-y: auto;
+}
+.preview-toolbar {
+  width: 100%; max-width: 680px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; gap: 10px; flex-wrap: wrap;
+}
+.preview-toolbar h2 { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.btn-print {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 14px; background: var(--navy); color: #fff;
+  border: none; border-radius: 7px; font-size: 12px; font-weight: 600;
+  font-family: 'IBM Plex Sans',sans-serif; cursor: pointer; transition: background 0.18s;
+}
+.btn-print:hover { background: #0f2640; }
+
+/* ══ ORDEN CARD ══ */
+.orden-card {
+  width: 100%; max-width: 680px;
+  background: #fff; border: 1px solid #d1d9e0;
+  border-radius: 3px; box-shadow: 0 4px 24px rgba(0,0,0,0.09);
+  position: relative;
+}
+.watermark {
+  display: none; position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none; z-index: 10;
+  align-items: center; justify-content: center;
+  transform: rotate(-35deg);
+}
+.watermark.show { display: flex; }
+.watermark span {
+  font-size: 80px; font-weight: 900;
+  color: rgba(220,38,38,0.16);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: 'IBM Plex Sans',sans-serif;
+  white-space: nowrap; user-select: none;
+  border: 6px solid rgba(220,38,38,0.13);
+  padding: 6px 18px; border-radius: 4px;
+}
+.orden-header { background: var(--navy); display: flex; align-items: stretch; min-height: 64px; border-radius: 3px 3px 0 0; overflow: hidden; }
+.oh-logo { flex: 1; display: flex; align-items: center; padding: 12px 16px; }
+.oh-logo-mark {
+  width: 34px; height: 34px; border: 2px solid rgba(126,179,232,0.55);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  margin-right: 10px; flex-shrink: 0;
+}
+.oh-logo-mark span { color: #7eb3e8; font-size: 13px; font-weight: 700; }
+.oh-title { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+.oh-right {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px 14px; border-left: 1px solid rgba(126,179,232,0.25); min-width: 110px;
+}
+.oh-label { color: #7eb3e8; font-size: 7px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 3px; }
+.oh-num   { color: #fff; font-size: 18px; font-weight: 700; font-family: 'IBM Plex Mono',monospace; }
+.orden-info { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid #e8edf2; }
+.oi-prov { flex: 1; }
+.oi-fecha { text-align: right; }
+.info-label { font-size: 8px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 2px; }
+.info-val { font-size: 12px; font-weight: 600; color: var(--dark); }
+.info-val.empty { color: #d1d9e0; font-style: italic; font-weight: 400; font-size: 11px; }
+.orden-ciudad { display: flex; padding: 6px 16px; border-bottom: 1px solid #e8edf2; background: #fafbfc; flex-wrap: wrap; gap: 4px; }
+.ciudad-item { flex: 1; min-width: 76px; display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); font-weight: 500; }
+.ciudad-item.selected { color: var(--navy); font-weight: 700; }
+.chk-box { width: 12px; height: 12px; border: 1.5px solid var(--border); border-radius: 2px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #fff; }
+.ciudad-item.selected .chk-box { background: var(--navy); border-color: var(--navy); }
+.chk-mark { display: none; width: 6px; height: 4px; border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff; transform: rotate(-45deg) translateY(-1px); }
+.ciudad-item.selected .chk-mark { display: block; }
+.orden-table { border-collapse: collapse; width: 100%; }
+.orden-table th { background: var(--navy); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 10px; text-align: left; border-right: 1px solid rgba(255,255,255,0.12); }
+.orden-table th:last-child { border-right: none; }
+.orden-table td { padding: 8px 10px; border-right: 1px solid #e8edf2; border-bottom: 1px solid #e8edf2; font-weight: 500; color: var(--dark); font-size: 12px; vertical-align: middle; }
+.orden-table td:last-child { border-right: none; }
+.orden-table tr.empty-row td { height: 22px; background: #fafbfc; }
+.col-orden { width: 22%; } .col-bultos { width: 11%; text-align:center; } .col-desc { width: 67%; }
+.autorizacion { padding: 10px 16px 0; }
+.auth-title { font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--navy); margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1.5px solid var(--navy); display: inline-block; }
+.auth-row { display: flex; gap: 16px; margin-bottom: 10px; align-items: flex-end; flex-wrap: wrap; }
+.auth-field { flex: 1; min-width: 76px; }
+.auth-field.wide { flex: 1.7; }
+.auth-lbl { font-size: 8px; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+.auth-val { font-size: 12px; font-weight: 600; color: var(--dark); border-bottom: 1.5px solid var(--border); padding-bottom: 3px; min-height: 20px; }
+.auth-val.empty { color: #e2e8f0; }
+.orden-footer { display: flex; align-items: flex-end; padding: 14px 16px 18px; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
+.footer-firma { flex: 1; min-width: 130px; }
+.firma-space { height: 56px; border: 1.5px dashed #cbd5e1; border-radius: 3px; background: #fafbfc; display: flex; align-items: center; justify-content: center; }
+.firma-space span { font-size: 9px; color: #cbd5e1; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }
+.firma-label { text-align: center; font-size: 9px; color: var(--muted); font-weight: 700; margin-top: 4px; letter-spacing: 0.07em; text-transform: uppercase; }
+.footer-empresa { text-align: right; flex: 1; min-width: 170px; }
+.emp-name { font-size: 13px; font-weight: 700; color: var(--navy); }
+.emp-info { font-size: 9px; color: var(--muted); margin-top: 3px; line-height: 1.65; }
+
+/* ══ TOAST ══ */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1a3a5c; color: #fff; padding: 10px 20px;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  font-family: 'IBM Plex Sans',sans-serif;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+.toast.error { background: #dc2626; }
+
+/* ══ MOBILE ══ */
+.mobile-toggle { display: none; }
+
+@media (max-width: 900px) {
+  .panel-ordenes { display: none; }
+}
+@media (max-width: 768px) {
+  .app-inner { flex-direction: column; }
+  .sidebar { width: 100%; min-width: unset; position: relative; height: auto; }
+  .main { display: none; padding: 16px 12px 28px; }
+  .main.mobile-show { display: flex; }
+  .mobile-toggle {
+    display: flex; position: sticky; top: 44px; z-index: 100;
+    background: #0f2640; border-bottom: 2px solid rgba(126,179,232,0.2);
+  }
+  .mobile-toggle button {
+    flex: 1; padding: 12px 8px; background: transparent;
+    color: rgba(255,255,255,0.45); border: none;
+    font-size: 12px; font-weight: 700; font-family: 'IBM Plex Sans',sans-serif;
+    cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .mobile-toggle button.active { color: #fff; border-bottom-color: #7eb3e8; }
+  .watermark span { font-size: 44px; }
+}
+
+/* ══ PRINT ══ */
+@media print {
+  body { background: #fff; }
+  .topbar, .sidebar, .preview-toolbar, .mobile-toggle, .panel-ordenes, .toast { display: none !important; }
+  .app-inner { display: block; }
+  .main { display: flex !important; padding: 0; background: #fff; }
+  .orden-card { box-shadow: none; border: none; border-radius: 0; max-width: 100%; width: 100%; }
+  .firma-space { height: 72px; border: 1px dashed #bbb; }
+  .watermark.show { display: flex; }
+  @page { margin: 12mm; size: letter portrait; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">MERCOL</div>
+    <div class="login-sub">Órdenes de Entrega</div>
+    <div class="login-desc">Inicia sesión con tu cuenta Microsoft para acceder al sistema y sincronizar las órdenes en la nube.</div>
+    <button class="btn-ms" onclick="iniciarSesion()">
+      <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+        <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+      </svg>
+      Iniciar sesión con Microsoft
+    </button>
+    <div class="login-user" id="login-user">
+      <div class="user-avatar" id="user-avatar">E</div>
+      <div>
+        <div class="user-name" id="user-name">Cargando...</div>
+        <div class="user-email" id="user-email"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">MERCOL</span>
+      <span class="topbar-badge">Órdenes de Entrega</span>
+    </div>
+    <div class="topbar-user">
+      <span class="topbar-username" id="topbar-username"></span>
+      <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </div>
+
+  <!-- Mobile tabs -->
+  <div class="mobile-toggle">
+    <button id="tab-form" class="active" onclick="showTab('form')">✏️ Formulario</button>
+    <button id="tab-prev" onclick="showTab('preview')">👁 Vista Previa</button>
+  </div>
+
+  <div class="app-inner">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="consec-row">
+          <span class="consec-label">Nº ORDEN</span>
+          <input class="consec-input" id="consecutivo" type="number" min="1" value="1"/>
+        </div>
+        <button class="btn-hist" onclick="descargarHistorial()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 16V4M7 11l5 5 5-5M3 19h18"/>
+          </svg>
+          Descargar Historial Excel
+          <span class="hist-badge" id="hist-count">0</span>
+        </button>
+      </div>
+
+      <div class="form-body">
+        <div class="sec-title">Tipo de Azúcar</div>
+        <div class="field">
+          <label>Tipo <span class="req">*</span></label>
+          <select id="f-tipo" onchange="onTipoChange()">
+            <option value="Nacional">Nacional</option>
+            <option value="Importada">Importada</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Proveedor <span class="req">*</span></label>
+          <select id="f-proveedor">
+            <option value="Ing. Pichichi">Ing. Pichichi</option>
+          </select>
+        </div>
+
+        <div class="sec-title">Información General</div>
+        <div class="field">
+          <label>Fecha <span class="req">*</span></label>
+          <input type="text" id="f-fecha" placeholder="DD/MM/AA"/>
+        </div>
+        <div class="field">
+          <label>Ciudad <span class="req">*</span></label>
+          <select id="f-ciudad">
+            <option value="Cartagena">Cartagena</option>
+            <option value="Barranquilla">Barranquilla</option>
+            <option value="Santa Marta">Santa Marta</option>
+            <option value="Mercado Interno">Mercado Interno</option>
+          </select>
+        </div>
+
+        <div class="sec-title">Datos del Cargue</div>
+        <div class="field">
+          <label id="lbl-ordenno">Transportadora <span class="req">*</span></label>
+          <input type="text" id="f-ordenno" placeholder="Ej: Transer"/>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Bultos <span class="req">*</span></label>
+            <input type="number" id="f-bultos" placeholder="700"/>
+          </div>
+          <div class="field" id="desc-wrap">
+            <label>Descripción <span class="req">*</span></label>
+            <input type="text" id="f-desc" placeholder="Azúcar Sulfi 50kg"/>
+          </div>
+        </div>
+        <div class="field" id="pref-field" style="display:none">
+          <label>Prefijo importación <span class="req">*</span></label>
+          <input type="text" id="f-prefijo" placeholder="229A, 229B…"/>
+        </div>
+
+        <div class="sec-title">Autorización — Conductor</div>
+        <div class="field">
+          <label>Nombres y Apellidos <span class="req">*</span></label>
+          <input type="text" id="f-nombre" placeholder="Nombre completo"/>
+        </div>
+        <div class="field">
+          <label>CC <span class="req">*</span></label>
+          <input type="text" id="f-cc" placeholder="Cédula"/>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Marca</label><input type="text" id="f-marca" placeholder="Kenworth"/></div>
+          <div class="field"><label>Color</label><input type="text" id="f-color" placeholder="Azul"/></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Placa <span class="req">*</span></label><input type="text" id="f-placa" placeholder="WLB613"/></div>
+          <div class="field"><label>Modelo</label><input type="text" id="f-modelo" placeholder="2019"/></div>
+          <div class="field"><label>R/T</label><input type="text" id="f-rt" placeholder="Trailer"/></div>
+        </div>
+        <div class="field">
+          <label>Celular</label>
+          <input type="tel" id="f-celular" placeholder="Cel. conductor"/>
+        </div>
+
+        <button class="btn-gen"    onclick="accionOrden(false)">➤  Generar Orden de Entrega</button>
+        <button class="btn-anular" onclick="accionOrden(true)">✕  Generar Orden ANULADA</button>
+        <button class="btn-clear"  onclick="limpiarForm()">↺  Limpiar formulario</button>
+      </div>
+    </aside>
+
+    <!-- ══ MAIN PREVIEW ══ -->
+    <main class="main" id="main-preview">
+      <div class="preview-toolbar">
+        <h2>Vista previa — Orden de Entrega</h2>
+        <button class="btn-print" onclick="window.print()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8" rx="1"/>
+          </svg>
+          Imprimir / PDF
+        </button>
+      </div>
+
+      <div class="orden-card" id="orden-card">
+        <div class="watermark" id="watermark"><span>ANULADA</span></div>
+        <div class="orden-header">
+          <div class="oh-logo">
+            <div class="oh-logo-mark"><span>M</span></div>
+            <div class="oh-title">MERCOL</div>
+          </div>
+          <div class="oh-right">
+            <div class="oh-label">Orden de Entrega</div>
+            <div class="oh-num" id="p-num">00001</div>
+          </div>
+        </div>
+        <div class="orden-info">
+          <div class="oi-prov"><div class="info-label">Proveedor</div><div class="info-val" id="p-proveedor">Ing. Pichichi</div></div>
+          <div class="oi-fecha"><div class="info-label">Fecha</div><div class="info-val empty" id="p-fecha">—</div></div>
+        </div>
+        <div class="orden-ciudad" id="p-ciudades"></div>
+        <table class="orden-table">
+          <thead><tr>
+            <th class="col-orden">Orden No.</th>
+            <th class="col-bultos">Bultos</th>
+            <th class="col-desc">Descripción</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td id="p-ordenno">—</td>
+              <td id="p-bultos" style="text-align:center">—</td>
+              <td id="p-desc">—</td>
+            </tr>
+            <tr class="empty-row"><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="autorizacion">
+          <div class="auth-title">Autorización</div>
+          <div class="auth-row">
+            <div class="auth-field wide"><div class="auth-lbl">Nombres y Apellidos</div><div class="auth-val empty" id="p-nombre">—</div></div>
+            <div class="auth-field"><div class="auth-lbl">CC</div><div class="auth-val empty" id="p-cc">—</div></div>
+          </div>
+          <div class="auth-row">
+            <div class="auth-field"><div class="auth-lbl">Marca</div><div class="auth-val empty" id="p-marca">—</div></div>
+            <div class="auth-field"><div class="auth-lbl">Color</div><div class="auth-val empty" id="p-color">—</div></div>
+            <div class="auth-field"><div class="auth-lbl">Placa</div><div class="auth-val empty" id="p-placa">—</div></div>
+          </div>
+          <div class="auth-row">
+            <div class="auth-field"><div class="auth-lbl">Celular</div><div class="auth-val empty" id="p-celular">—</div></div>
+            <div class="auth-field"><div class="auth-lbl">Modelo</div><div class="auth-val empty" id="p-modelo">—</div></div>
+            <div class="auth-field"><div class="auth-lbl">R/T</div><div class="auth-val empty" id="p-rt">—</div></div>
+          </div>
+        </div>
+        <div class="orden-footer">
+          <div class="footer-firma">
+            <div class="firma-space"><span>Firma y Sello</span></div>
+            <div class="firma-label">Firma y Sello</div>
+          </div>
+          <div class="footer-empresa">
+            <div class="emp-name">MERCOL SUGAR SAS</div>
+            <div class="emp-info">Email: ventas@asomercol.com<br>Tel: (57) 2 4837225 &nbsp; Cel: 3148905071</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ══ PANEL ÓRDENES ══ -->
+    <div class="panel-ordenes">
+      <div class="panel-header">
+        <div class="panel-title">
+          Órdenes guardadas
+          <span class="panel-count" id="panel-count">0</span>
+        </div>
+        <input class="panel-search" id="panel-search" type="text"
+               placeholder="Buscar por Nº, conductor, placa…"
+               oninput="filtrarPanel()"/>
+      </div>
+      <div class="panel-list" id="panel-list">
+        <div class="panel-empty">
+          <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#cbd5e1" stroke-width="1.5">
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <span>Las órdenes aparecerán aquí una vez que generes la primera</span>
+        </div>
+      </div>
+      <div class="panel-sync" id="panel-sync">Sincronizado con OneDrive</div>
+    </div>
+
+  </div><!-- /app-inner -->
+</div><!-- /app -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONFIGURACIÓN MSAL — Microsoft Graph
+// ════════════════════════════════════════════════════════
+const MSAL_CONFIG = {
+  auth: {
+    clientId:    "931766cd-a57b-46ed-94be-e01f4c4839b2",
+    authority:   "https://login.microsoftonline.com/86b2974e-3eb7-481e-974a-2ec36eb05f07",
+    redirectUri: window.location.href.split('?')[0],
+  },
+  cache: { cacheLocation: "localStorage", storeAuthStateInCookie: true }
+};
+const SCOPES    = ["User.Read", "Files.ReadWrite"];
+const FILE_NAME = "Mercol_Ordenes.xlsx";
+const FILE_PATH = `/me/drive/root:/MercolOrdenes/${FILE_NAME}:/`;
+
+let msalInstance = null;
+let currentAccount = null;
+let ordenes = [];       // cache local
+let fileId  = null;     // ID del Excel en OneDrive
+
+// ════════════════════════════════════════════════════════
+//  INICIALIZACIÓN MSAL
+// ════════════════════════════════════════════════════════
+async function initMSAL() {
+  msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+  await msalInstance.initialize();
+
+  // Manejar redirect al volver de login
+  try {
+    const resp = await msalInstance.handleRedirectPromise();
+    if (resp) currentAccount = resp.account;
+  } catch(e) { console.error(e); }
+
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    currentAccount = accounts[0];
+    mostrarApp();
+  }
+}
+
+async function iniciarSesion() {
+  try {
+    await msalInstance.loginRedirect({ scopes: SCOPES });
+  } catch(e) { showToast("Error al iniciar sesión", true); }
+}
+
+function cerrarSesion() {
+  msalInstance.logoutRedirect({ account: currentAccount });
+}
+
+async function getToken() {
+  try {
+    const res = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account: currentAccount });
+    return res.accessToken;
+  } catch {
+    const res = await msalInstance.acquireTokenRedirect({ scopes: SCOPES, account: currentAccount });
+    return res?.accessToken;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  MOSTRAR APP
+// ════════════════════════════════════════════════════════
+async function mostrarApp() {
+  const name  = currentAccount.name  || currentAccount.username;
+  const email = currentAccount.username;
+  const initials = name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+
+  document.getElementById('user-avatar').textContent  = initials;
+  document.getElementById('user-name').textContent    = name;
+  document.getElementById('user-email').textContent   = email;
+  document.getElementById('login-user').classList.add('show');
+  document.getElementById('topbar-username').textContent = name;
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+
+  // Cargar órdenes desde OneDrive
+  await cargarOrdenes();
+  init();
+}
+
+// ════════════════════════════════════════════════════════
+//  GRAPH API — helpers
+// ════════════════════════════════════════════════════════
+async function graphGet(url) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Graph GET error: ${res.status}`);
+  return res.json();
+}
+
+async function graphPut(url, body, contentType = 'application/json') {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': contentType },
+    body: contentType === 'application/json' ? JSON.stringify(body) : body
+  });
+  if (!res.ok) throw new Error(`Graph PUT error: ${res.status}`);
+  return res.json();
+}
+
+async function graphPost(url, body) {
+  const token = await getToken();
+  const res = await fetch(`https://graph.microsoft.com/v1.0${url}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Graph POST error: ${res.status}`);
+  return res.json();
+}
+
+// ════════════════════════════════════════════════════════
+//  EXCEL EN ONEDRIVE — cargar / guardar
+// ════════════════════════════════════════════════════════
+const COLS = ['Nº Orden','Fecha','Estado','Tipo','Proveedor','Ciudad','Orden No/BL','Bultos','Descripción','Conductor','CC','Placa','R/T'];
+
+async function cargarOrdenes() {
+  document.getElementById('panel-sync').textContent = 'Sincronizando…';
+  try {
+    // Verificar si el archivo existe
+    let meta;
+    try {
+      meta = await graphGet(`${FILE_PATH}`);
+      fileId = meta.id;
+    } catch {
+      // No existe — crear carpeta y archivo vacío
+      await crearArchivoInicial();
+      renderPanel();
+      document.getElementById('panel-sync').textContent = 'Archivo creado en OneDrive ✓';
+      return;
+    }
+
+    // Descargar contenido del Excel
+    const token = await getToken();
+    const dlRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/content`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const buffer = await dlRes.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    ordenes = data;
+
+    // Calcular siguiente consecutivo
+    if (ordenes.length > 0) {
+      const maxNum = Math.max(...ordenes.map(o => parseInt(o['Nº Orden']) || 0));
+      document.getElementById('consecutivo').value = maxNum + 1;
+    }
+
+    renderPanel();
+    document.getElementById('hist-count').textContent = ordenes.length;
+    document.getElementById('panel-sync').textContent = `Sincronizado con OneDrive ✓ (${ordenes.length} órdenes)`;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('panel-sync').textContent = 'Error de sincronización';
+    showToast('No se pudo conectar con OneDrive', true);
+  }
+}
+
+async function crearArchivoInicial() {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([COLS]);
+  ws['!cols'] = COLS.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Ordenes');
+  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+  const token = await getToken();
+
+  // Crear carpeta primero (ignorar error si ya existe)
+  try {
+    await graphPost('/me/drive/root/children', {
+      name: 'MercolOrdenes', folder: {}, '@microsoft.graph.conflictBehavior': 'fail'
+    });
+  } catch {}
+
+  // Subir archivo
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/MercolOrdenes/${FILE_NAME}:/content`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    body: new Blob([buf])
+  });
+  const meta = await res.json();
+  fileId = meta.id;
+}
+
+async function guardarOrden(orden) {
+  ordenes.push(orden);
+  document.getElementById('hist-count').textContent = ordenes.length;
+  document.getElementById('panel-count').textContent = ordenes.length;
+
+  try {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(ordenes, { header: COLS });
+    ws['!cols'] = COLS.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Ordenes');
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    const token = await getToken();
+    await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/MercolOrdenes/${FILE_NAME}:/content`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+      body: new Blob([buf])
+    });
+
+    renderPanel();
+    document.getElementById('panel-sync').textContent = `Sincronizado con OneDrive ✓ (${ordenes.length} órdenes)`;
+    showToast('Orden guardada en OneDrive ✓');
+  } catch(e) {
+    console.error(e);
+    showToast('Error al guardar en OneDrive', true);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  PANEL DE ÓRDENES
+// ════════════════════════════════════════════════════════
+function renderPanel(filtro = '') {
+  const lista = document.getElementById('panel-list');
+  const count = document.getElementById('panel-count');
+
+  let items = [...ordenes].reverse(); // más recientes primero
+  if (filtro) {
+    const q = filtro.toLowerCase();
+    items = items.filter(o =>
+      String(o['Nº Orden']).includes(q) ||
+      (o['Conductor']||'').toLowerCase().includes(q) ||
+      (o['Placa']||'').toLowerCase().includes(q) ||
+      (o['Orden No/BL']||'').toLowerCase().includes(q) ||
+      (o['Fecha']||'').includes(q)
+    );
+  }
+
+  count.textContent = ordenes.length;
+
+  if (items.length === 0) {
+    lista.innerHTML = `<div class="panel-empty">
+      <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#cbd5e1" stroke-width="1.5">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <span>${filtro ? 'Sin resultados para "'+filtro+'"' : 'Las órdenes aparecerán aquí'}</span>
+    </div>`;
+    return;
+  }
+
+  lista.innerHTML = items.map((o, i) => {
+    const anulada = o['Estado'] === 'ANULADA';
+    const num = String(o['Nº Orden']).padStart(5, '0');
+    return `<div class="orden-item ${anulada ? 'anulada' : ''}" onclick="cargarOrden(${ordenes.length - 1 - i})">
+      <div class="oi-top">
+        <span class="oi-num">${num}</span>
+        <span class="oi-badge ${anulada ? 'badge-anul' : 'badge-gen'}">${o['Estado']||'GENERADA'}</span>
+      </div>
+      <div class="oi-mid">${o['Conductor'] || '—'}</div>
+      <div class="oi-bot">${o['Fecha']||''} · ${o['Placa']||''} · ${o['Tipo']||''}</div>
+    </div>`;
+  }).join('');
+}
+
+function filtrarPanel() {
+  renderPanel(document.getElementById('panel-search').value);
+}
+
+function cargarOrden(idx) {
+  const o = ordenes[idx];
+  if (!o) return;
+
+  // Cargar tipo primero para activar lógica
+  document.getElementById('f-tipo').value = o['Tipo'] || 'Nacional';
+  onTipoChange();
+
+  document.getElementById('consecutivo').value = o['Nº Orden'];
+  document.getElementById('f-fecha').value      = o['Fecha']       || '';
+  document.getElementById('f-ciudad').value     = o['Ciudad']      || 'Cartagena';
+  document.getElementById('f-ordenno').value    = o['Orden No/BL'] || '';
+  document.getElementById('f-bultos').value     = o['Bultos']      || '';
+  document.getElementById('f-nombre').value     = o['Conductor']   || '';
+  document.getElementById('f-cc').value         = o['CC']          || '';
+  document.getElementById('f-placa').value      = o['Placa']       || '';
+  document.getElementById('f-rt').value         = o['R/T']         || '';
+  document.getElementById('f-marca').value      = '';
+  document.getElementById('f-color').value      = '';
+  document.getElementById('f-modelo').value     = '';
+  document.getElementById('f-celular').value    = '';
+
+  // Proveedor
+  const sel = document.getElementById('f-proveedor');
+  const prov = o['Proveedor'] || '';
+  for (let opt of sel.options) {
+    if (opt.value === prov) { sel.value = prov; break; }
+  }
+
+  // Descripción / Prefijo
+  const desc = o['Descripción'] || '';
+  if (o['Tipo'] === 'Importada') {
+    const match = desc.match(/Azúcar Importada - (.+)/);
+    document.getElementById('f-prefijo').value = match ? match[1] : desc;
+  } else {
+    document.getElementById('f-desc').value = desc;
+  }
+
+  updatePreview();
+  document.getElementById('watermark').classList.remove('show');
+
+  // En móvil ir a preview
+  if (window.innerWidth <= 768) showTab('preview');
+
+  showToast(`Orden ${String(o['Nº Orden']).padStart(5,'0')} cargada`);
+}
+
+// ════════════════════════════════════════════════════════
+//  TABS MOBILE
+// ════════════════════════════════════════════════════════
+function showTab(tab) {
+  const isForm = tab === 'form';
+  document.getElementById('sidebar').style.display = isForm ? 'flex' : 'none';
+  document.getElementById('main-preview').classList.toggle('mobile-show', !isForm);
+  document.getElementById('tab-form').classList.toggle('active',  isForm);
+  document.getElementById('tab-prev').classList.toggle('active', !isForm);
+}
+
+// ════════════════════════════════════════════════════════
+//  TIPO DE AZÚCAR
+// ════════════════════════════════════════════════════════
+function onTipoChange() {
+  const imp = document.getElementById('f-tipo').value === 'Importada';
+  const sel = document.getElementById('f-proveedor');
+  sel.innerHTML = imp
+    ? '<option value="Almaviva">Almaviva</option><option value="Almagrario">Almagrario</option>'
+    : '<option value="Ing. Pichichi">Ing. Pichichi</option>';
+  document.getElementById('desc-wrap').style.display  = imp ? 'none' : 'flex';
+  document.getElementById('pref-field').style.display = imp ? 'flex' : 'none';
+  const lbl = document.getElementById('lbl-ordenno');
+  const inp = document.getElementById('f-ordenno');
+  lbl.innerHTML   = (imp ? 'Número de BL' : 'Transportadora') + ' <span class="req">*</span>';
+  inp.placeholder = imp ? 'Ej: BL 12817A' : 'Ej: Transer';
+  updatePreview();
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function v(id) { return (document.getElementById(id)?.value || '').trim(); }
+function pad(n) { return String(n).padStart(5,'0'); }
+
+function setP(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text || '—';
+  el.classList.toggle('empty', !text);
+}
+
+const CIUDADES = ['Cartagena','Barranquilla','Santa Marta','Mercado Interno'];
+function renderCiudades(sel) {
+  document.getElementById('p-ciudades').innerHTML = CIUDADES.map(c =>
+    `<div class="ciudad-item ${c===sel?'selected':''}">
+      <div class="chk-box"><div class="chk-mark"></div></div>${c}
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  LIVE PREVIEW
+// ════════════════════════════════════════════════════════
+function updatePreview() {
+  const imp    = v('f-tipo') === 'Importada';
+  const pref   = v('f-prefijo');
+  const desc   = imp ? (pref ? `Azúcar Importada - ${pref}` : '') : v('f-desc');
+  const prov   = v('f-proveedor') || 'Ing. Pichichi';
+  const ciudad = v('f-ciudad') || 'Cartagena';
+
+  document.getElementById('p-num').textContent = pad(parseInt(v('consecutivo') || document.getElementById('consecutivo').value) || 1);
+  setP('p-proveedor', prov);
+  setP('p-fecha',   v('f-fecha'));
+  setP('p-ordenno', v('f-ordenno'));
+  setP('p-bultos',  v('f-bultos'));
+  setP('p-desc',    desc);
+  setP('p-nombre',  v('f-nombre'));
+  setP('p-cc',      v('f-cc'));
+  setP('p-marca',   v('f-marca'));
+  setP('p-color',   v('f-color'));
+  setP('p-placa',   v('f-placa'));
+  setP('p-celular', v('f-celular'));
+  setP('p-modelo',  v('f-modelo'));
+  setP('p-rt',      v('f-rt'));
+  renderCiudades(ciudad);
+}
+
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('input',  updatePreview);
+  el.addEventListener('change', updatePreview);
+});
+
+// ════════════════════════════════════════════════════════
+//  GENERAR / ANULAR
+// ════════════════════════════════════════════════════════
+async function accionOrden(esAnulada) {
+  if (!v('f-fecha'))   return alert('Ingresa la Fecha.');
+  if (!v('f-ciudad'))  return alert('Selecciona la Ciudad.');
+  if (!v('f-ordenno')) return alert('Ingresa Transportadora o Nº BL.');
+  if (!v('f-bultos'))  return alert('Ingresa la cantidad de Bultos.');
+  if (!v('f-nombre'))  return alert('Ingresa el nombre del Conductor.');
+  if (!v('f-cc'))      return alert('Ingresa la Cédula (CC).');
+  if (!v('f-placa'))   return alert('Ingresa la Placa.');
+  const imp = v('f-tipo') === 'Importada';
+  if (!imp && !v('f-desc'))    return alert('Ingresa la Descripción.');
+  if (imp  && !v('f-prefijo')) return alert('Ingresa el Prefijo de importación.');
+
+  document.getElementById('watermark').classList.toggle('show', esAnulada);
+  updatePreview();
+
+  const num  = parseInt(document.getElementById('consecutivo').value) || 1;
+  const pref = v('f-prefijo');
+  const desc = imp ? `Azúcar Importada - ${pref}` : v('f-desc');
+  const prov = v('f-proveedor') || 'Ing. Pichichi';
+
+  const orden = {
+    'Nº Orden'    : num,
+    'Fecha'       : v('f-fecha'),
+    'Estado'      : esAnulada ? 'ANULADA' : 'GENERADA',
+    'Tipo'        : v('f-tipo'),
+    'Proveedor'   : prov,
+    'Ciudad'      : v('f-ciudad'),
+    'Orden No/BL' : v('f-ordenno'),
+    'Bultos'      : v('f-bultos'),
+    'Descripción' : desc,
+    'Conductor'   : v('f-nombre'),
+    'CC'          : v('f-cc'),
+    'Placa'       : v('f-placa'),
+    'R/T'         : v('f-rt'),
+  };
+
+  // Guardar en OneDrive
+  await guardarOrden(orden);
+
+  // Avanzar consecutivo solo si es orden normal
+  if (!esAnulada) {
+    const next = num + 1;
+    document.getElementById('consecutivo').value = next;
+    document.getElementById('p-num').textContent = pad(next);
+  }
+
+  if (window.innerWidth <= 768) showTab('preview');
+  setTimeout(() => window.print(), 200);
+}
+
+// ════════════════════════════════════════════════════════
+//  LIMPIAR
+// ════════════════════════════════════════════════════════
+function limpiarForm() {
+  ['f-fecha','f-ordenno','f-bultos','f-desc','f-prefijo',
+   'f-nombre','f-cc','f-marca','f-color','f-placa',
+   'f-celular','f-modelo','f-rt'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-tipo').value   = 'Nacional';
+  document.getElementById('f-ciudad').value = 'Cartagena';
+  document.getElementById('watermark').classList.remove('show');
+  onTipoChange();
+}
+
+// ════════════════════════════════════════════════════════
+//  DESCARGAR HISTORIAL EXCEL
+// ════════════════════════════════════════════════════════
+function descargarHistorial() {
+  if (!ordenes.length) { alert('Aún no hay órdenes registradas.'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(ordenes, { header: COLS });
+  ws['!cols'] = COLS.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Ordenes');
+  const d = new Date();
+  XLSX.writeFile(wb, `Mercol_Historial_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (error ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+function init() {
+  const hoy = new Date();
+  const fechaEl = document.getElementById('f-fecha');
+  if (!fechaEl.value) {
+    fechaEl.value = `${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}/${String(hoy.getFullYear()).slice(-2)}`;
+  }
+  renderCiudades('Cartagena');
+  updatePreview();
+}
+
+// Arrancar MSAL
+initMSAL().catch(console.error);
+</script>
+</body>
+</html>
