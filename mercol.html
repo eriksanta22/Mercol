@@ -618,7 +618,7 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: #e8edf2; min-height
           </div>
           <div class="footer-empresa">
             <div class="emp-name">MERCOL SUGAR SAS</div>
-            <div class="emp-info">Email: ventas@asomercol.com<br>Tel: (57) 2 4837225 &nbsp; Cel: 3148905071</div>
+            <div class="emp-info">Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7006151e0411033011031f1d1502131f1c5e131f1d">[email&#160;protected]</a><br>Tel: (57) 2 4837225 &nbsp; Cel: 3148905071</div>
           </div>
         </div>
       </div>
@@ -652,7 +652,7 @@ body { font-family: 'IBM Plex Sans', sans-serif; background: #e8edf2; min-height
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ════════════════════════════════════════════════════════
 //  CONFIGURACIÓN MSAL — Microsoft Graph
 // ════════════════════════════════════════════════════════
@@ -660,7 +660,7 @@ const MSAL_CONFIG = {
   auth: {
     clientId:    "931766cd-a57b-46ed-94be-e01f4c4839b2",
     authority:   "https://login.microsoftonline.com/86b2974e-3eb7-481e-974a-2ec36eb05f07",
-    redirectUri: window.location.href.split('?')[0],
+    redirectUri: "https://eriksanta22.github.io/Mercol/mercol.html",
   },
   cache: { cacheLocation: "localStorage", storeAuthStateInCookie: true }
 };
@@ -1149,14 +1149,4 @@ function init() {
   const hoy = new Date();
   const fechaEl = document.getElementById('f-fecha');
   if (!fechaEl.value) {
-    fechaEl.value = `${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}/${String(hoy.getFullYear()).slice(-2)}`;
-  }
-  renderCiudades('Cartagena');
-  updatePreview();
-}
-
-// Arrancar MSAL
-initMSAL().catch(console.error);
-</script>
-</body>
-</html>
+    fechaEl.value = `${String(hoy.getDate()).padS
